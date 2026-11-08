@@ -29,16 +29,16 @@ func TestRenderTOCAndHighlight(t *testing.T) {
 	if !strings.Contains(string(res.HTML), `id="intro"`) {
 		t.Errorf("heading id stripped: %s", res.HTML)
 	}
-	if !strings.Contains(string(res.HTML), "<pre") || !strings.Contains(string(res.HTML), "style=") {
+	if !strings.Contains(string(res.HTML), "<pre") || !strings.Contains(string(res.HTML), `class="chroma"`) {
 		t.Errorf("highlighting missing: %s", res.HTML)
 	}
 }
 
 func TestReadingTime(t *testing.T) {
-	if got := readingTime("a b c"); got != 1 {
+	if got := ReadingTime("a b c"); got != 1 {
 		t.Errorf("got %d", got)
 	}
-	if got := readingTime(strings.Repeat("word ", 661)); got != 4 {
+	if got := ReadingTime(strings.Repeat("word ", 661)); got != 4 {
 		t.Errorf("got %d", got)
 	}
 }

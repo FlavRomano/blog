@@ -1,0 +1,7 @@
+{{define "content"}}
+{{with .Data}}
+<h1 class="mb-2 text-2xl font-bold tracking-tight">#{{.Tag.Name}}</h1>
+<p class="text-sm text-stone-500 dark:text-stone-400"><a href="/tags" class="hover:underline">All tags</a></p>
+{{template "postlist" .Posts}}{{template "pager" .Pager}}
+{{end}}
+{{end}}

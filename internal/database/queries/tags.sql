@@ -11,3 +11,14 @@ SELECT t.* FROM tags t
 JOIN post_tags pt ON pt.tag_id = t.id
 WHERE pt.post_id = ?
 ORDER BY t.name;
+
+-- name: GetTagBySlug :one
+SELECT * FROM tags WHERE slug = ?;
+
+-- name: ListTagsWithCounts :many
+SELECT t.id, t.slug, t.name, count(p.id) AS post_count
+FROM tags t
+JOIN post_tags pt ON pt.tag_id = t.id
+JOIN posts p ON p.id = pt.post_id AND p.status = 'published'
+GROUP BY t.id
+ORDER BY t.name;

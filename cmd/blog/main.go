@@ -44,9 +44,13 @@ func run() error {
 	}
 	defer func() { _ = db.Close() }()
 
+	handler, err := server.New(server.Deps{DB: db, Log: log, Cfg: cfg})
+	if err != nil {
+		return err
+	}
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.New(db, log),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

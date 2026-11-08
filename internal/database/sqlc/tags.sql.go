@@ -23,6 +23,17 @@ func (q *Queries) AddPostTag(ctx context.Context, arg AddPostTagParams) error {
 	return err
 }
 
+const getTagBySlug = `-- name: GetTagBySlug :one
+SELECT id, slug, name FROM tags WHERE slug = ?
+`
+
+func (q *Queries) GetTagBySlug(ctx context.Context, slug string) (Tag, error) {
+	row := q.db.QueryRowContext(ctx, getTagBySlug, slug)
+	var i Tag
+	err := row.Scan(&i.ID, &i.Slug, &i.Name)
+	return i, err
+}
+
 const listPostTags = `-- name: ListPostTags :many
 SELECT t.id, t.slug, t.name FROM tags t
 JOIN post_tags pt ON pt.tag_id = t.id
@@ -40,6 +51,50 @@ func (q *Queries) ListPostTags(ctx context.Context, postID int64) ([]Tag, error)
 	for rows.Next() {
 		var i Tag
 		if err := rows.Scan(&i.ID, &i.Slug, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTagsWithCounts = `-- name: ListTagsWithCounts :many
+SELECT t.id, t.slug, t.name, count(p.id) AS post_count
+FROM tags t
+JOIN post_tags pt ON pt.tag_id = t.id
+JOIN posts p ON p.id = pt.post_id AND p.status = 'published'
+GROUP BY t.id
+ORDER BY t.name
+`
+
+type ListTagsWithCountsRow struct {
+	ID        int64
+	Slug      string
+	Name      string
+	PostCount int64
+}
+
+func (q *Queries) ListTagsWithCounts(ctx context.Context) ([]ListTagsWithCountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listTagsWithCounts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTagsWithCountsRow
+	for rows.Next() {
+		var i ListTagsWithCountsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.PostCount,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -5,10 +5,10 @@ package markdown
 import (
 	"bytes"
 	"html/template"
-	"regexp"
 	"strings"
 	"unicode"
 
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
@@ -32,9 +32,6 @@ type Result struct {
 
 const wordsPerMinute = 220
 
-// styleAttr only admits the simple declarations chroma emits.
-var styleAttr = regexp.MustCompile(`^(?:\s*(?:color|background-color|font-weight|font-style|text-decoration)\s*:\s*[#\w\s-]+;?)+$`)
-
 type Renderer struct {
 	md     goldmark.Markdown
 	policy *bluemonday.Policy
@@ -43,7 +40,6 @@ type Renderer struct {
 func New() *Renderer {
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").OnElements("code", "pre", "span", "div")
-	p.AllowAttrs("style").Matching(styleAttr).OnElements("span", "pre")
 	p.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6")
 	p.RequireNoFollowOnLinks(true)
 	p.AddTargetBlankToFullyQualifiedLinks(true)
@@ -52,7 +48,7 @@ func New() *Renderer {
 		md: goldmark.New(
 			goldmark.WithExtensions(
 				extension.GFM,
-				highlighting.NewHighlighting(highlighting.WithStyle("github")),
+				highlighting.NewHighlighting(highlighting.WithFormatOptions(chromahtml.WithClasses(true))),
 			),
 			goldmark.WithParserOptions(parser.WithAutoHeadingID()),
 		),
@@ -71,7 +67,7 @@ func (r *Renderer) Render(src string) (Result, error) {
 	return Result{
 		HTML:        template.HTML(r.policy.SanitizeBytes(buf.Bytes())), //nolint:gosec // sanitized
 		TOC:         toc(doc, b),
-		ReadingTime: readingTime(src),
+		ReadingTime: ReadingTime(src),
 	}, nil
 }
 
@@ -90,7 +86,8 @@ func toc(doc ast.Node, src []byte) []TOCEntry {
 	return out
 }
 
-func readingTime(s string) int {
+// ReadingTime estimates minutes to read s, at least 1.
+func ReadingTime(s string) int {
 	words := len(strings.FieldsFunc(s, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) }))
 	if m := (words + wordsPerMinute - 1) / wordsPerMinute; m > 1 {
 		return m

@@ -4,22 +4,76 @@ package server
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/FlavRomano/blog/internal/config"
+	"github.com/FlavRomano/blog/internal/database/sqlc"
+	"github.com/FlavRomano/blog/internal/markdown"
 )
 
-type Server struct {
-	db  *sql.DB
-	log *slog.Logger
+type Deps struct {
+	DB  *sql.DB
+	Log *slog.Logger
+	Cfg config.Config
 }
 
-func New(db *sql.DB, log *slog.Logger) http.Handler {
-	s := &Server{db: db, log: log}
+type Server struct {
+	db     *sql.DB
+	q      *sqlc.Queries
+	log    *slog.Logger
+	cfg    config.Config
+	md     *markdown.Renderer
+	cache  *renderCache
+	pages  map[string]*pageTemplate
+	site   siteInfo
+	assets *assets
+}
+
+func New(d Deps) (http.Handler, error) {
+	a, err := loadAssets()
+	if err != nil {
+		return nil, err
+	}
+	pages, err := parseTemplates()
+	if err != nil {
+		return nil, fmt.Errorf("templates: %w", err)
+	}
+	s := &Server{
+		db: d.DB, q: sqlc.New(d.DB), log: d.Log, cfg: d.Cfg,
+		md: markdown.New(), cache: newRenderCache(256),
+		pages: pages, assets: a,
+		site: siteInfo{
+			Name:         d.Cfg.SiteName,
+			Author:       d.Cfg.AuthorName,
+			Description:  d.Cfg.SiteDescription,
+			BaseURL:      d.Cfg.BaseURL,
+			BeaconToken:  d.Cfg.CFBeaconToken,
+			AssetVersion: a.version,
+			Nav:          []navItem{{"/", "Posts"}, {"/tags", "Tags"}, {"/projects", "Projects"}, {"/about", "About"}},
+		},
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
-	mux.HandleFunc("GET /robots.txt", robots)
-	return chain(mux, s.recoverer, s.logRequests, securityHeaders)
+	mux.HandleFunc("GET /robots.txt", s.robots)
+	mux.HandleFunc("GET /sitemap.xml", s.sitemap)
+	mux.HandleFunc("GET /rss.xml", s.rss)
+	mux.HandleFunc("GET /atom.xml", s.atom)
+	mux.Handle("GET /static/", s.assets.handler())
+
+	mux.HandleFunc("GET /{$}", s.home)
+	mux.HandleFunc("GET /posts/{slug}", s.post)
+	mux.HandleFunc("GET /tags", s.tags)
+	mux.HandleFunc("GET /tags/{slug}", s.tag)
+	mux.HandleFunc("GET /about", s.static("about.html", "About", "/about", "About me and what this site is."))
+	mux.HandleFunc("GET /projects", s.static("projects.html", "Projects", "/projects", "Things I have built."))
+	mux.HandleFunc("GET /privacy", s.static("privacy.html", "Privacy", "/privacy", "What data this site collects."))
+	mux.HandleFunc("/", s.notFound)
+
+	return chain(mux, s.recoverer, s.logRequests, securityHeaders), nil
 }
 
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +88,7 @@ func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte("ok"))
 }
 
-func robots(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) robots(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, _ = w.Write([]byte("User-agent: *\nDisallow: /admin\n"))
+	_, _ = fmt.Fprintf(w, "User-agent: *\nDisallow: /admin\n\nSitemap: %s/sitemap.xml\n", s.cfg.BaseURL)
 }

@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 type Config struct {
@@ -14,6 +15,12 @@ type Config struct {
 	TOTPKeyHex  string // 32-byte key, hex; encrypts the TOTP secret (ADR 0004)
 	IPHashSalt  string // stable salt for IP hashing (ADR 0005)
 	TrustTunnel bool   // trust CF-Connecting-IP only when behind the tunnel
+
+	BaseURL         string // public origin, no trailing slash
+	SiteName        string
+	SiteDescription string
+	AuthorName      string
+	CFBeaconToken   string // Cloudflare Web Analytics token; empty disables the beacon
 }
 
 func Load() (Config, error) {
@@ -25,6 +32,12 @@ func Load() (Config, error) {
 		TOTPKeyHex:  os.Getenv("BLOG_TOTP_KEY"),
 		IPHashSalt:  os.Getenv("BLOG_IP_SALT"),
 		TrustTunnel: os.Getenv("BLOG_TRUST_TUNNEL") == "true",
+
+		BaseURL:         strings.TrimRight(env("BLOG_BASE_URL", "http://localhost:8080"), "/"),
+		SiteName:        env("BLOG_SITE_NAME", "Flavio Romano"),
+		SiteDescription: env("BLOG_SITE_DESCRIPTION", "Notes on software, systems and whatever I'm building."),
+		AuthorName:      env("BLOG_AUTHOR_NAME", "Flavio Romano"),
+		CFBeaconToken:   os.Getenv("BLOG_CF_BEACON_TOKEN"),
 	}
 	if c.DBPath == "" {
 		return c, fmt.Errorf("BLOG_DB_PATH must not be empty")

@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@source "./templates";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
+.prose pre.chroma {
+  background-color: var(--chroma-bg);
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+.prose pre.chroma code {
+  background: none;
+}
+.prose :where(code):not(pre code)::before,
+.prose :where(code):not(pre code)::after {
+  content: none;
+}

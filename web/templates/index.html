@@ -1,0 +1,4 @@
+{{define "content"}}
+<h1 class="sr-only">Latest posts</h1>
+{{with .Data}}{{template "postlist" .Posts}}{{template "pager" .Pager}}{{end}}
+{{end}}

@@ -1,0 +1,7 @@
+{{define "content"}}
+<h1 class="mb-6 text-2xl font-bold tracking-tight">Tags</h1>
+<ul class="flex flex-wrap gap-3">
+{{range .Data}}<li><a href="/tags/{{.Slug}}" class="rounded-full bg-stone-100 px-4 py-1 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700">#{{.Name}} <span class="text-stone-500 dark:text-stone-400">{{.PostCount}}</span></a></li>
+{{else}}<li class="text-stone-500 dark:text-stone-400">No tags yet.</li>{{end}}
+</ul>
+{{end}}

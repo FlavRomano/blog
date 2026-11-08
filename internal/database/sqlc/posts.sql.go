@@ -21,6 +21,20 @@ func (q *Queries) CountPublishedPosts(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countPublishedPostsByTag = `-- name: CountPublishedPostsByTag :one
+SELECT count(*) FROM posts p
+JOIN post_tags pt ON pt.post_id = p.id
+JOIN tags t ON t.id = pt.tag_id
+WHERE p.status = 'published' AND t.slug = ?
+`
+
+func (q *Queries) CountPublishedPostsByTag(ctx context.Context, slug string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countPublishedPostsByTag, slug)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createPost = `-- name: CreatePost :one
 INSERT INTO posts (slug, title, summary, body_md, status, published_at)
 VALUES (?, ?, ?, ?, ?, ?)
@@ -81,6 +95,40 @@ func (q *Queries) GetPostBySlug(ctx context.Context, slug string) (Post, error) 
 	return i, err
 }
 
+const listPublishedPostRefs = `-- name: ListPublishedPostRefs :many
+SELECT slug, updated_at FROM posts
+WHERE status = 'published'
+ORDER BY published_at DESC
+`
+
+type ListPublishedPostRefsRow struct {
+	Slug      string
+	UpdatedAt string
+}
+
+func (q *Queries) ListPublishedPostRefs(ctx context.Context) ([]ListPublishedPostRefsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedPostRefs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPublishedPostRefsRow
+	for rows.Next() {
+		var i ListPublishedPostRefsRow
+		if err := rows.Scan(&i.Slug, &i.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPublishedPosts = `-- name: ListPublishedPosts :many
 SELECT id, slug, title, summary, body_md, status, published_at, created_at, updated_at FROM posts
 WHERE status = 'published'
@@ -95,6 +143,54 @@ type ListPublishedPostsParams struct {
 
 func (q *Queries) ListPublishedPosts(ctx context.Context, arg ListPublishedPostsParams) ([]Post, error) {
 	rows, err := q.db.QueryContext(ctx, listPublishedPosts, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Post
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Title,
+			&i.Summary,
+			&i.BodyMd,
+			&i.Status,
+			&i.PublishedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublishedPostsByTag = `-- name: ListPublishedPostsByTag :many
+SELECT p.id, p.slug, p.title, p.summary, p.body_md, p.status, p.published_at, p.created_at, p.updated_at FROM posts p
+JOIN post_tags pt ON pt.post_id = p.id
+JOIN tags t ON t.id = pt.tag_id
+WHERE p.status = 'published' AND t.slug = ?
+ORDER BY p.published_at DESC
+LIMIT ? OFFSET ?
+`
+
+type ListPublishedPostsByTagParams struct {
+	Slug   string
+	Limit  int64
+	Offset int64
+}
+
+func (q *Queries) ListPublishedPostsByTag(ctx context.Context, arg ListPublishedPostsByTagParams) ([]Post, error) {
+	rows, err := q.db.QueryContext(ctx, listPublishedPostsByTag, arg.Slug, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
