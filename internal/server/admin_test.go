@@ -37,7 +37,7 @@ type adminEnv struct {
 	uploads string
 }
 
-func newAdminEnv(t *testing.T) *adminEnv {
+func newAdminEnv(t *testing.T, opts ...func(*server.Deps)) *adminEnv {
 	t.Helper()
 	db, err := database.Open(filepath.Join(t.TempDir(), "t.db"))
 	if err != nil {
@@ -56,11 +56,15 @@ func newAdminEnv(t *testing.T) *adminEnv {
 		t.Fatal(err)
 	}
 	e := &adminEnv{q: sqlc.New(db), enr: enr, now: &now, uploads: t.TempDir()}
-	h, err := server.New(server.Deps{
+	deps := server.Deps{
 		DB: db, Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Cfg:  config.Config{BaseURL: "https://example.com", SiteName: "Test Site", AuthorName: "T", UploadsDir: e.uploads, Timezone: "Europe/Rome"},
-		Auth: svc, IP: clientip.New("salt", false),
-	})
+		Auth: svc, IP: clientip.New("salt", true),
+	}
+	for _, o := range opts {
+		o(&deps)
+	}
+	h, err := server.New(deps)
 	if err != nil {
 		t.Fatal(err)
 	}

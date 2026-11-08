@@ -17,6 +17,24 @@ type Admin struct {
 	UpdatedAt     string
 }
 
+type Ban struct {
+	IpHash    string
+	CreatedAt string
+}
+
+type Comment struct {
+	ID        int64
+	PostID    int64
+	ParentID  sql.NullInt64
+	Depth     int64
+	Author    string
+	Body      string
+	IpHash    string
+	Deleted   int64
+	Seen      int64
+	CreatedAt string
+}
+
 type LoginFailure struct {
 	ID     int64
 	IpHash string

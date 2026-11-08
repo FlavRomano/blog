@@ -16,5 +16,60 @@
   {{end}}
   <div class="prose prose-stone max-w-none dark:prose-invert prose-headings:scroll-mt-4">{{.HTML}}</div>
 </article>
+{{if .CommentsEnabled}}{{template "comments" .}}{{end}}
 {{end}}
+{{end}}
+
+{{define "comment"}}
+<li id="comment-{{.ID}}" class="py-3">
+  {{if .Deleted}}
+  <p class="text-sm italic text-stone-500 dark:text-stone-400">[deleted]</p>
+  {{else}}
+  <p class="text-sm"><strong>{{.Author}}</strong> <time datetime="{{.DateISO}}" class="text-stone-500 dark:text-stone-400">· {{.DateText}}</time></p>
+  <p class="mt-1 whitespace-pre-line break-words">{{.Body}}</p>
+  <p class="mt-1 text-sm"><a href="?reply={{.ID}}#comment-form" class="text-stone-500 hover:underline dark:text-stone-400" rel="nofollow">Reply</a></p>
+  {{end}}
+  {{if .Children}}
+  <ol class="mt-2 border-l border-stone-200 pl-4 dark:border-stone-800">
+    {{range .Children}}{{template "comment" .}}{{end}}
+  </ol>
+  {{end}}
+</li>
+{{end}}
+
+{{define "comments"}}
+<section id="comments" aria-labelledby="comments-title" class="mt-12 border-t border-stone-200 pt-8 dark:border-stone-800">
+  <h2 id="comments-title" class="text-xl font-semibold tracking-tight">{{if eq .CommentCount 1}}1 comment{{else}}{{.CommentCount}} comments{{end}}</h2>
+  {{if .Comments}}
+  <ol class="mt-4 divide-y divide-stone-200 dark:divide-stone-800">
+    {{range .Comments}}{{template "comment" .}}{{end}}
+  </ol>
+  {{end}}
+
+  <form id="comment-form" method="post" action="/posts/{{.Post.Slug}}/comments" class="mt-8 max-w-2xl space-y-4">
+    <h3 class="text-lg font-semibold">{{if .Form.ReplyTo}}Reply to {{.Form.ReplyTo}}{{else}}Leave a comment{{end}}</h3>
+    {{if .Form.Error}}<p role="alert" class="field-error">{{.Form.Error}}</p>{{end}}
+    {{if .Form.ParentID}}
+    <input type="hidden" name="parent" value="{{.Form.ParentID}}">
+    <p class="text-sm"><a href="/posts/{{.Post.Slug}}#comment-form" class="underline">Cancel reply</a></p>
+    {{end}}
+    <div>
+      <label for="c-name" class="label">Name</label>
+      <input id="c-name" name="name" type="text" required maxlength="50" autocomplete="nickname" value="{{.Form.Name}}" class="field">
+    </div>
+    <div>
+      <label for="c-body" class="label">Comment <span class="font-normal text-stone-500">(plain text, max 2000 characters, up to 2 links)</span></label>
+      <textarea id="c-body" name="body" required minlength="2" maxlength="2000" rows="5" class="field">{{.Form.Body}}</textarea>
+    </div>
+    <div class="hidden" aria-hidden="true">
+      <label>Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+    </div>
+    {{if .TurnstileKey}}
+    <div class="cf-turnstile" data-sitekey="{{.TurnstileKey}}"></div>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    {{end}}
+    <button type="submit" class="btn btn-primary">Post comment</button>
+    <p class="text-sm text-stone-500 dark:text-stone-400">No email needed. Comments are not moderated in advance. See the <a href="/privacy" class="underline">privacy notes</a>.</p>
+  </form>
+</section>
 {{end}}

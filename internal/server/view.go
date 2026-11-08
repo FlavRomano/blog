@@ -34,6 +34,7 @@ type pageData struct {
 	NoIndex       bool
 	LoggedIn      bool
 	CSRF          string
+	Unseen        int // new comments, shown in the admin nav
 	Year          int
 	Data          any
 }

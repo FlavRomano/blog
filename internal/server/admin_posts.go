@@ -58,7 +58,7 @@ func (s *Server) renderForm(w http.ResponseWriter, r *http.Request, status int, 
 	if f.ID != 0 {
 		title = "Edit post"
 	}
-	s.render(w, status, "admin_post.html", adminPage(r, title, f))
+	s.render(w, status, "admin_post.html", s.adminPage(r, title, f))
 }
 
 func postID(r *http.Request) (int64, bool) {

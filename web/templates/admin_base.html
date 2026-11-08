@@ -20,6 +20,7 @@
   <nav aria-label="Admin" class="flex flex-wrap items-center gap-4 text-sm">
     <a href="/admin" class="hover:underline">Posts</a>
     <a href="/admin/posts/new" class="hover:underline">New post</a>
+    <a href="/admin/comments" class="hover:underline">Comments{{if .Unseen}} <span class="rounded-full bg-stone-900 px-1.5 py-0.5 text-xs text-white dark:bg-stone-100 dark:text-stone-900">{{.Unseen}} new</span>{{end}}</a>
     <a href="/" class="hover:underline">View site</a>
     <form method="post" action="/admin/logout">
       <input type="hidden" name="csrf" value="{{.CSRF}}">

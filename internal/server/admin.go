@@ -42,6 +42,10 @@ func (s *Server) adminRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /admin/posts/{id}/delete", guard(s.postDelete))
 	mux.HandleFunc("POST /admin/preview", guard(s.preview))
 	mux.HandleFunc("POST /admin/images", guard(s.imageUpload))
+	mux.HandleFunc("GET /admin/comments", guard(s.commentsAdmin))
+	mux.HandleFunc("POST /admin/comments/{id}/delete", guard(s.commentDelete))
+	mux.HandleFunc("POST /admin/comments/{id}/ban", guard(s.commentBan))
+	mux.HandleFunc("POST /admin/bans/{hash}/delete", guard(s.banDelete))
 }
 
 func (s *Server) noStore(next http.HandlerFunc) http.HandlerFunc {
@@ -89,8 +93,12 @@ func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 }
 
 // adminPage builds pageData for an authenticated admin view.
-func adminPage(r *http.Request, title string, data any) pageData {
-	return pageData{Title: title, Path: r.URL.Path, NoIndex: true, LoggedIn: true, CSRF: sessionFrom(r).CSRF, Data: data}
+func (s *Server) adminPage(r *http.Request, title string, data any) pageData {
+	unseen, err := s.q.CountUnseenComments(r.Context())
+	if err != nil {
+		s.log.Error("count unseen comments", "err", err)
+	}
+	return pageData{Title: title, Path: r.URL.Path, NoIndex: true, LoggedIn: true, CSRF: sessionFrom(r).CSRF, Unseen: int(unseen), Data: data}
 }
 
 type loginData struct{ Error string }
@@ -162,7 +170,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 	for i, p := range posts {
 		rows[i] = adminRow{ID: p.ID, Title: p.Title, Slug: p.Slug, Status: p.Status, Dated: s.localTime(p.PublishedAt)}
 	}
-	s.render(w, http.StatusOK, "admin_dashboard.html", adminPage(r, "Posts", rows))
+	s.render(w, http.StatusOK, "admin_dashboard.html", s.adminPage(r, "Posts", rows))
 }
 
 func (s *Server) localTime(v sql.NullString) string {

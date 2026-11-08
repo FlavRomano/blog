@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 
@@ -102,6 +101,11 @@ func (s *Server) post(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, "get post", err)
 		return
 	}
+	s.showPost(w, r, p, http.StatusOK, commentForm{})
+}
+
+// showPost renders a published post with its comment thread and form.
+func (s *Server) showPost(w http.ResponseWriter, r *http.Request, p sqlc.Post, status int, form commentForm) {
 	v, err := s.toView(r, p)
 	if err != nil {
 		s.serverError(w, "post view", err)
@@ -116,14 +120,32 @@ func (s *Server) post(w http.ResponseWriter, r *http.Request) {
 	if len(res.TOC) >= 2 {
 		toc = res.TOC
 	}
-	s.render(w, http.StatusOK, "post.html", pageData{
+	page := postPage{Post: v, HTML: res.HTML, TOC: toc, CommentsEnabled: s.commentsEnabled(), Form: form, TurnstileKey: s.cfg.TurnstileSiteKey}
+	if page.CommentsEnabled {
+		rows, err := s.q.ListCommentsByPost(r.Context(), p.ID)
+		if err != nil {
+			s.serverError(w, "list comments", err)
+			return
+		}
+		page.Comments, page.CommentCount = s.buildComments(rows)
+		if page.Form.ParentID == 0 {
+			page.Form.ParentID, _ = strconv.ParseInt(r.URL.Query().Get("reply"), 10, 64)
+		}
+		if page.Form.ParentID != 0 {
+			page.Form.ReplyTo = ""
+			for _, c := range rows {
+				if c.ID == page.Form.ParentID && c.Deleted == 0 {
+					page.Form.ReplyTo = c.Author
+				}
+			}
+			if page.Form.ReplyTo == "" {
+				page.Form.ParentID = 0
+			}
+		}
+	}
+	s.render(w, status, "post.html", pageData{
 		Title: p.Title, Description: p.Summary, Path: "/posts/" + p.Slug, Nav: "/",
-		OGType: "article", PublishedTime: v.DateISO, Tags: v.Tags,
-		Data: struct {
-			Post postView
-			HTML template.HTML
-			TOC  []markdown.TOCEntry
-		}{v, res.HTML, toc},
+		OGType: "article", PublishedTime: v.DateISO, Tags: v.Tags, Data: page,
 	})
 }
 

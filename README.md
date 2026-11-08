@@ -28,3 +28,17 @@ go run ./cmd/blog admin reset   # re-enroll (invalidates all sessions)
 
 Sign in with the password plus a TOTP (or one-time recovery) code. Uploaded images
 live in `BLOG_UPLOADS_DIR` and are served as-is (EXIF is not stripped).
+
+## Comments
+
+Anonymous, unmoderated, name-only, plain text, nested up to 4 levels. Enabled when
+`BLOG_IP_SALT` is set. Client IPs are stored only as salted hashes (rate limits: 3 per
+10 min and 20 per day per IP; bans are per hash, managed at `/admin/comments`).
+
+| Variable | Purpose |
+| --- | --- |
+| `BLOG_TURNSTILE_SITE_KEY`, `BLOG_TURNSTILE_SECRET` | Cloudflare Turnstile bot check (set both, or neither to skip it in dev) |
+| `BLOG_TRUST_TUNNEL=true` | Trust `CF-Connecting-IP` (only from the local tunnel connection); required in production |
+| `BLOG_NOTIFY_URL` | Optional ntfy-style webhook; new comments are POSTed (name and an excerpt) to it |
+
+The admin nav shows how many comments are new since you last opened the comments page.

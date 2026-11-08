@@ -1,0 +1,44 @@
+{{define "content"}}
+<h1 class="mb-6 text-2xl font-bold tracking-tight">Comments</h1>
+{{with .Data}}
+{{if .Flash}}<p role="status" class="mb-4 rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">{{if eq .Flash "deleted"}}Comment deleted.{{else if eq .Flash "banned"}}IP hash banned.{{else if eq .Flash "unbanned"}}Ban removed.{{else}}That comment has no IP hash to ban.{{end}}</p>{{end}}
+<ul class="divide-y divide-stone-200 dark:divide-stone-800">
+  {{range .Comments}}
+  <li class="py-4">
+    <p class="text-sm"><strong>{{.Author}}</strong>{{if .New}} <span class="rounded-full bg-stone-900 px-1.5 py-0.5 text-xs text-white dark:bg-stone-100 dark:text-stone-900">new</span>{{end}}
+      <span class="text-stone-500">· {{.Dated}} · on <a class="underline" href="/posts/{{.PostSlug}}">{{.PostTitle}}</a>{{if .HasIP}} · <code>{{.ShortHash}}</code>{{end}}{{if .Banned}} · banned{{end}}</span></p>
+    <p class="mt-1 whitespace-pre-line break-words">{{.Body}}</p>
+    <div class="mt-2 flex gap-2">
+      <form method="post" action="/admin/comments/{{.ID}}/delete" data-confirm="Delete this comment?">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <button type="submit" class="btn btn-danger">Delete</button>
+      </form>
+      {{if and .HasIP (not .Banned)}}
+      <form method="post" action="/admin/comments/{{.ID}}/ban" data-confirm="Ban this IP hash from commenting?">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <button type="submit" class="btn">Ban IP hash</button>
+      </form>
+      {{end}}
+    </div>
+  </li>
+  {{else}}
+  <li class="py-6 text-stone-500">No comments yet.</li>
+  {{end}}
+</ul>
+
+<h2 class="mb-3 mt-12 text-xl font-semibold tracking-tight">Banned IP hashes</h2>
+<ul class="divide-y divide-stone-200 dark:divide-stone-800">
+  {{range .Bans}}
+  <li class="flex items-center justify-between py-3 text-sm">
+    <span><code>{{.ShortHash}}</code> <span class="text-stone-500">· since {{.Dated}} · {{.Comments}} comment(s)</span></span>
+    <form method="post" action="/admin/bans/{{.Hash}}/delete">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <button type="submit" class="btn">Unban</button>
+    </form>
+  </li>
+  {{else}}
+  <li class="py-3 text-sm text-stone-500">No bans.</li>
+  {{end}}
+</ul>
+{{end}}
+{{end}}

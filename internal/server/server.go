@@ -14,15 +14,22 @@ import (
 	"github.com/FlavRomano/blog/internal/config"
 	"github.com/FlavRomano/blog/internal/database/sqlc"
 	"github.com/FlavRomano/blog/internal/markdown"
+	"github.com/FlavRomano/blog/internal/notify"
+	"github.com/FlavRomano/blog/internal/turnstile"
 )
 
 type Deps struct {
 	DB  *sql.DB
 	Log *slog.Logger
 	Cfg config.Config
-	// Auth and IP enable the /admin area; leave nil to disable it.
+	// Auth enables the /admin area; leave nil to disable it. It requires IP.
 	Auth *auth.Service
-	IP   *clientip.Resolver
+	// IP identifies clients by salted hash; comments are disabled when nil.
+	IP *clientip.Resolver
+	// Turnstile verifies the bot check on comments; nil skips the check.
+	Turnstile *turnstile.Verifier
+	// Notify announces new comments to the owner; nil disables it.
+	Notify notify.Func
 }
 
 type Server struct {
@@ -38,6 +45,9 @@ type Server struct {
 	auth   *auth.Service
 	ip     *clientip.Resolver
 	loc    *time.Location
+
+	turnstile *turnstile.Verifier
+	notify    notify.Func
 }
 
 func New(d Deps) (http.Handler, error) {
@@ -57,7 +67,7 @@ func New(d Deps) (http.Handler, error) {
 		return nil, fmt.Errorf("admin enabled without an IP resolver")
 	}
 	s := &Server{
-		auth: d.Auth, ip: d.IP, loc: loc,
+		auth: d.Auth, ip: d.IP, loc: loc, turnstile: d.Turnstile, notify: d.Notify,
 		db: d.DB, q: sqlc.New(d.DB), log: d.Log, cfg: d.Cfg,
 		md: markdown.New(), cache: newRenderCache(256),
 		pages: pages, assets: a,
@@ -82,6 +92,7 @@ func New(d Deps) (http.Handler, error) {
 
 	mux.HandleFunc("GET /{$}", s.home)
 	mux.HandleFunc("GET /posts/{slug}", s.post)
+	mux.HandleFunc("POST /posts/{slug}/comments", s.postComments)
 	mux.HandleFunc("GET /tags", s.tags)
 	mux.HandleFunc("GET /tags/{slug}", s.tag)
 	mux.HandleFunc("GET /about", s.static("about.html", "About", "/about", "About me and what this site is."))

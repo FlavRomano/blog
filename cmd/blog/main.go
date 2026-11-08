@@ -17,8 +17,10 @@ import (
 	"github.com/FlavRomano/blog/internal/config"
 	"github.com/FlavRomano/blog/internal/database"
 	"github.com/FlavRomano/blog/internal/database/sqlc"
+	"github.com/FlavRomano/blog/internal/notify"
 	"github.com/FlavRomano/blog/internal/scheduler"
 	"github.com/FlavRomano/blog/internal/server"
+	"github.com/FlavRomano/blog/internal/turnstile"
 )
 
 func main() {
@@ -79,12 +81,24 @@ func run() error {
 			return err
 		},
 	}}
-	if authSvc != nil {
-		if cfg.IPHashSalt == "" {
-			return errors.New("BLOG_IP_SALT is required when the admin is enabled; generate with: openssl rand -hex 32")
-		}
-		deps.Auth = authSvc
+	if authSvc != nil && cfg.IPHashSalt == "" {
+		return errors.New("BLOG_IP_SALT is required when the admin is enabled; generate with: openssl rand -hex 32")
+	}
+	if cfg.IPHashSalt != "" {
 		deps.IP = clientip.New(cfg.IPHashSalt, cfg.TrustTunnel)
+	} else {
+		log.Warn("comments disabled: set BLOG_IP_SALT to enable them")
+	}
+	if cfg.TurnstileSecret != "" {
+		deps.Turnstile = &turnstile.Verifier{Secret: cfg.TurnstileSecret}
+	} else if deps.IP != nil {
+		log.Warn("comments are not protected by Turnstile: set BLOG_TURNSTILE_SITE_KEY and BLOG_TURNSTILE_SECRET")
+	}
+	if cfg.NotifyURL != "" {
+		deps.Notify = notify.Webhook(cfg.NotifyURL, nil, log)
+	}
+	if authSvc != nil {
+		deps.Auth = authSvc
 		tasks = append(tasks, scheduler.Task{Name: "prune-auth", Run: authSvc.Prune})
 	}
 
