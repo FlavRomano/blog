@@ -1,0 +1,5 @@
+version: "2"
+linters:
+  enable: [gosec, errorlint, misspell, bodyclose, noctx]
+  exclusions:
+    paths: [internal/database/sqlc]
