@@ -8,6 +8,21 @@ import (
 	"database/sql"
 )
 
+type Admin struct {
+	ID            int64
+	PasswordHash  string
+	TotpSecretEnc []byte
+	TotpLastStep  int64
+	CreatedAt     string
+	UpdatedAt     string
+}
+
+type LoginFailure struct {
+	ID     int64
+	IpHash string
+	At     string
+}
+
 type Post struct {
 	ID          int64
 	Slug        string
@@ -29,6 +44,21 @@ type PostsFt struct {
 	Title   string
 	Summary string
 	BodyMd  string
+}
+
+type RecoveryCode struct {
+	ID       int64
+	CodeHash string
+	UsedAt   sql.NullString
+}
+
+type Session struct {
+	ID         int64
+	TokenHash  string
+	CsrfToken  string
+	CreatedAt  string
+	LastSeenAt string
+	ExpiresAt  string
 }
 
 type Tag struct {

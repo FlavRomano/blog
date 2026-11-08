@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/xml"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/FlavRomano/blog/internal/database/sqlc"
@@ -31,7 +32,7 @@ func (s *Server) feedItems(r *http.Request) ([]feedItem, error) {
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, feedItem{p, v, string(res.HTML)})
+		items = append(items, feedItem{p, v, strings.ReplaceAll(string(res.HTML), `src="/uploads/`, `src="`+s.site.BaseURL+`/uploads/`)})
 	}
 	return items, nil
 }

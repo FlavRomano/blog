@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,6 +32,8 @@ type pageData struct {
 	PublishedTime string
 	Tags          []sqlc.Tag
 	NoIndex       bool
+	LoggedIn      bool
+	CSRF          string
 	Year          int
 	Data          any
 }
@@ -54,10 +57,14 @@ func parseTemplates() (map[string]*pageTemplate, error) {
 	out := map[string]*pageTemplate{}
 	for _, f := range files {
 		name := f[len("templates/"):]
-		if name == "base.html" || name == "partials.html" {
+		if name == "base.html" || name == "admin_base.html" || name == "partials.html" {
 			continue
 		}
-		t, err := template.ParseFS(web.FS, "templates/base.html", "templates/partials.html", f)
+		base := "templates/base.html"
+		if strings.HasPrefix(name, "admin_") {
+			base = "templates/admin_base.html"
+		}
+		t, err := template.ParseFS(web.FS, base, "templates/partials.html", f)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
 		}

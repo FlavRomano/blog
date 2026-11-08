@@ -1,0 +1,17 @@
+{{define "content"}}
+<div class="mx-auto mt-10 max-w-sm">
+  <h1 class="mb-6 text-2xl font-bold tracking-tight">Sign in</h1>
+  {{with .Data.Error}}<p role="alert" class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300">{{.}}</p>{{end}}
+  <form method="post" action="/admin/login" class="space-y-4">
+    <div>
+      <label for="password" class="label">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required class="field">
+    </div>
+    <div>
+      <label for="code" class="label">Authenticator or recovery code</label>
+      <input id="code" name="code" type="text" inputmode="text" autocomplete="one-time-code" required class="field" spellcheck="false">
+    </div>
+    <button type="submit" class="btn btn-primary w-full justify-center">Sign in</button>
+  </form>
+</div>
+{{end}}

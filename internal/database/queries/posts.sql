@@ -38,3 +38,18 @@ WHERE p.status = 'published' AND t.slug = ?;
 SELECT slug, updated_at FROM posts
 WHERE status = 'published'
 ORDER BY published_at DESC;
+
+-- name: GetPostByID :one
+SELECT * FROM posts WHERE id = ?;
+
+-- name: ListAllPosts :many
+SELECT * FROM posts ORDER BY updated_at DESC;
+
+-- name: UpdatePost :exec
+UPDATE posts
+SET slug = ?, title = ?, summary = ?, body_md = ?, status = ?, published_at = ?,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?;
+
+-- name: DeletePost :exec
+DELETE FROM posts WHERE id = ?;

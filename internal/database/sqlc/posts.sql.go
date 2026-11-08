@@ -74,6 +74,36 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 	return i, err
 }
 
+const deletePost = `-- name: DeletePost :exec
+DELETE FROM posts WHERE id = ?
+`
+
+func (q *Queries) DeletePost(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deletePost, id)
+	return err
+}
+
+const getPostByID = `-- name: GetPostByID :one
+SELECT id, slug, title, summary, body_md, status, published_at, created_at, updated_at FROM posts WHERE id = ?
+`
+
+func (q *Queries) GetPostByID(ctx context.Context, id int64) (Post, error) {
+	row := q.db.QueryRowContext(ctx, getPostByID, id)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Title,
+		&i.Summary,
+		&i.BodyMd,
+		&i.Status,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getPostBySlug = `-- name: GetPostBySlug :one
 SELECT id, slug, title, summary, body_md, status, published_at, created_at, updated_at FROM posts WHERE slug = ?
 `
@@ -93,6 +123,43 @@ func (q *Queries) GetPostBySlug(ctx context.Context, slug string) (Post, error) 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listAllPosts = `-- name: ListAllPosts :many
+SELECT id, slug, title, summary, body_md, status, published_at, created_at, updated_at FROM posts ORDER BY updated_at DESC
+`
+
+func (q *Queries) ListAllPosts(ctx context.Context) ([]Post, error) {
+	rows, err := q.db.QueryContext(ctx, listAllPosts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Post
+	for rows.Next() {
+		var i Post
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Title,
+			&i.Summary,
+			&i.BodyMd,
+			&i.Status,
+			&i.PublishedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPublishedPostRefs = `-- name: ListPublishedPostRefs :many
@@ -234,4 +301,34 @@ func (q *Queries) PublishDuePosts(ctx context.Context, publishedAt sql.NullStrin
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const updatePost = `-- name: UpdatePost :exec
+UPDATE posts
+SET slug = ?, title = ?, summary = ?, body_md = ?, status = ?, published_at = ?,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+WHERE id = ?
+`
+
+type UpdatePostParams struct {
+	Slug        string
+	Title       string
+	Summary     string
+	BodyMd      string
+	Status      string
+	PublishedAt sql.NullString
+	ID          int64
+}
+
+func (q *Queries) UpdatePost(ctx context.Context, arg UpdatePostParams) error {
+	_, err := q.db.ExecContext(ctx, updatePost,
+		arg.Slug,
+		arg.Title,
+		arg.Summary,
+		arg.BodyMd,
+		arg.Status,
+		arg.PublishedAt,
+		arg.ID,
+	)
+	return err
 }

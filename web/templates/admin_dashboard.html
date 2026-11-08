@@ -1,0 +1,25 @@
+{{define "content"}}
+<div class="mb-6 flex items-center justify-between">
+  <h1 class="text-2xl font-bold tracking-tight">Posts</h1>
+  <a href="/admin/posts/new" class="btn btn-primary">New post</a>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm">
+  <thead class="border-b border-stone-200 text-stone-500 dark:border-stone-800">
+    <tr><th scope="col" class="py-2 pr-4">Title</th><th scope="col" class="py-2 pr-4">Status</th><th scope="col" class="py-2 pr-4">Publish date</th><th scope="col" class="py-2"><span class="sr-only">Actions</span></th></tr>
+  </thead>
+  <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
+  {{range .Data}}
+    <tr>
+      <td class="py-3 pr-4"><a href="/admin/posts/{{.ID}}" class="font-medium hover:underline">{{.Title}}</a><div class="text-xs text-stone-500">/posts/{{.Slug}}</div></td>
+      <td class="py-3 pr-4"><span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs dark:bg-stone-800">{{.Status}}</span></td>
+      <td class="py-3 pr-4">{{.Dated}}</td>
+      <td class="py-3 text-right">{{if eq .Status "published"}}<a href="/posts/{{.Slug}}" class="hover:underline">View</a>{{end}}</td>
+    </tr>
+  {{else}}
+    <tr><td colspan="4" class="py-6 text-stone-500">No posts yet. <a href="/admin/posts/new" class="underline">Write the first one</a>.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{end}}

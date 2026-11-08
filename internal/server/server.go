@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/FlavRomano/blog/internal/auth"
+	"github.com/FlavRomano/blog/internal/clientip"
 	"github.com/FlavRomano/blog/internal/config"
 	"github.com/FlavRomano/blog/internal/database/sqlc"
 	"github.com/FlavRomano/blog/internal/markdown"
@@ -18,6 +20,9 @@ type Deps struct {
 	DB  *sql.DB
 	Log *slog.Logger
 	Cfg config.Config
+	// Auth and IP enable the /admin area; leave nil to disable it.
+	Auth *auth.Service
+	IP   *clientip.Resolver
 }
 
 type Server struct {
@@ -30,6 +35,9 @@ type Server struct {
 	pages  map[string]*pageTemplate
 	site   siteInfo
 	assets *assets
+	auth   *auth.Service
+	ip     *clientip.Resolver
+	loc    *time.Location
 }
 
 func New(d Deps) (http.Handler, error) {
@@ -41,7 +49,15 @@ func New(d Deps) (http.Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("templates: %w", err)
 	}
+	loc, err := time.LoadLocation(d.Cfg.Timezone)
+	if err != nil {
+		return nil, fmt.Errorf("BLOG_TIMEZONE: %w", err)
+	}
+	if d.Auth != nil && d.IP == nil {
+		return nil, fmt.Errorf("admin enabled without an IP resolver")
+	}
 	s := &Server{
+		auth: d.Auth, ip: d.IP, loc: loc,
 		db: d.DB, q: sqlc.New(d.DB), log: d.Log, cfg: d.Cfg,
 		md: markdown.New(), cache: newRenderCache(256),
 		pages: pages, assets: a,
@@ -71,9 +87,15 @@ func New(d Deps) (http.Handler, error) {
 	mux.HandleFunc("GET /about", s.static("about.html", "About", "/about", "About me and what this site is."))
 	mux.HandleFunc("GET /projects", s.static("projects.html", "Projects", "/projects", "Things I have built."))
 	mux.HandleFunc("GET /privacy", s.static("privacy.html", "Privacy", "/privacy", "What data this site collects."))
+	mux.HandleFunc("GET /uploads/{name}", s.upload)
+	if s.auth != nil {
+		s.adminRoutes(mux)
+	} else {
+		d.Log.Warn("admin disabled: set BLOG_TOTP_KEY and BLOG_IP_SALT to enable /admin")
+	}
 	mux.HandleFunc("/", s.notFound)
 
-	return chain(mux, s.recoverer, s.logRequests, securityHeaders), nil
+	return chain(mux, s.recoverer, s.logRequests, securityHeaders, crossOrigin), nil
 }
 
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {

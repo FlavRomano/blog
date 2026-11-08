@@ -152,6 +152,10 @@ func (s *Server) tag(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, "count tag posts", err)
 		return
 	}
+	if count == 0 {
+		s.notFound(w, r)
+		return
+	}
 	posts, err := s.q.ListPublishedPostsByTag(r.Context(), sqlc.ListPublishedPostsByTagParams{Slug: t.Slug, Limit: pageSize, Offset: int64(page-1) * pageSize})
 	if err != nil {
 		s.serverError(w, "list tag posts", err)

@@ -1,0 +1,35 @@
+{{define "base"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · Admin</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"selfRequestsOnly":true}'>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css?v={{.Site.AssetVersion}}">
+<link rel="stylesheet" href="/static/chroma.css?v={{.Site.AssetVersion}}">
+<script src="/static/theme.js?v={{.Site.AssetVersion}}"></script>
+<script defer src="/static/htmx.min.js?v={{.Site.AssetVersion}}"></script>
+<script defer src="/static/admin.js?v={{.Site.AssetVersion}}"></script>
+</head>
+<body class="min-h-screen bg-white text-stone-800 antialiased dark:bg-stone-950 dark:text-stone-200" hx-headers='{"X-CSRF-Token":"{{.CSRF}}"}'>
+<header class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
+  <a href="/admin" class="text-lg font-semibold tracking-tight">{{.Site.Name}} <span class="text-sm font-normal text-stone-500">admin</span></a>
+  {{if .LoggedIn}}
+  <nav aria-label="Admin" class="flex flex-wrap items-center gap-4 text-sm">
+    <a href="/admin" class="hover:underline">Posts</a>
+    <a href="/admin/posts/new" class="hover:underline">New post</a>
+    <a href="/" class="hover:underline">View site</a>
+    <form method="post" action="/admin/logout">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button type="submit" class="btn">Sign out</button>
+    </form>
+  </nav>
+  {{end}}
+</header>
+<main class="mx-auto max-w-6xl px-4 pb-16">
+{{template "content" .}}
+</main>
+</body>
+</html>{{end}}

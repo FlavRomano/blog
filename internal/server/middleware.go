@@ -42,7 +42,7 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		s.log.Info("request", "method", r.Method, "path", r.URL.Path, "status", rec.status, "dur", time.Since(start))
+		s.log.Info("request", "method", r.Method, "path", r.URL.Path, "status", rec.status, "ms", time.Since(start).Milliseconds())
 	})
 }
 
@@ -56,4 +56,9 @@ func (s *Server) recoverer(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+// crossOrigin rejects cross-site state-changing browser requests (login CSRF included).
+func crossOrigin(next http.Handler) http.Handler {
+	return http.NewCrossOriginProtection().Handler(next)
 }

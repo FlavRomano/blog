@@ -1,0 +1,80 @@
+{{define "content"}}
+{{with .Data}}
+<h1 class="mb-4 text-2xl font-bold tracking-tight">{{if .ID}}Edit post{{else}}New post{{end}}</h1>
+{{if .Saved}}<p role="status" class="mb-4 rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-300">Saved.</p>{{end}}
+{{if .Errors}}<p role="alert" class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300">Please fix the errors below.</p>{{end}}
+
+<form id="post-form" method="post" action="{{if .ID}}/admin/posts/{{.ID}}{{else}}/admin/posts{{end}}" class="space-y-5">
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <div class="grid gap-5 sm:grid-cols-2">
+    <div>
+      <label for="title" class="label">Title</label>
+      <input id="title" name="title" value="{{.Title}}" required maxlength="200" class="field">
+      {{with .Errors.title}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <div>
+      <label for="slug" class="label">Slug <span class="font-normal text-stone-500">(blank = from title)</span></label>
+      <input id="slug" name="slug" value="{{.Slug}}" maxlength="100" class="field">
+      {{with .Errors.slug}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+  </div>
+  <div>
+    <label for="summary" class="label">Summary <span class="font-normal text-stone-500">(shown in lists, feeds and link previews)</span></label>
+    <textarea id="summary" name="summary" rows="2" maxlength="300" class="field">{{.Summary}}</textarea>
+    {{with .Errors.summary}}<p class="field-error">{{.}}</p>{{end}}
+  </div>
+  <div class="grid gap-5 sm:grid-cols-3">
+    <div>
+      <label for="tags" class="label">Tags <span class="font-normal text-stone-500">(comma-separated)</span></label>
+      <input id="tags" name="tags" value="{{.Tags}}" class="field">
+      {{with .Errors.tags}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <div>
+      <label for="status" class="label">Status</label>
+      <select id="status" name="status" class="field">
+        <option value="draft" {{if eq .Status "draft"}}selected{{end}}>Draft</option>
+        <option value="published" {{if eq .Status "published"}}selected{{end}}>Published</option>
+        <option value="scheduled" {{if eq .Status "scheduled"}}selected{{end}}>Scheduled</option>
+      </select>
+      {{with .Errors.status}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <div>
+      <label for="publish_at" class="label">Publish at <span class="font-normal text-stone-500">(required if scheduled)</span></label>
+      <input id="publish_at" name="publish_at" type="datetime-local" value="{{.PublishAt}}" class="field">
+      {{with .Errors.publish_at}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+  </div>
+
+  <div class="grid gap-5 lg:grid-cols-2">
+    <div>
+      <label for="body" class="label">Markdown</label>
+      <textarea id="body" name="body" rows="24" required class="field font-mono"
+        hx-post="/admin/preview" hx-trigger="input changed delay:400ms" hx-target="#preview" hx-swap="innerHTML">{{.Body}}</textarea>
+      {{with .Errors.body}}<p class="field-error">{{.}}</p>{{end}}
+      <div class="mt-3">
+        <label for="image" class="label">Upload image <span class="font-normal text-stone-500">(PNG, JPEG, GIF, WebP; max 5 MB)</span></label>
+        <input id="image" name="file" type="file" accept="image/png,image/jpeg,image/gif,image/webp" class="text-sm"
+          hx-post="/admin/images" hx-trigger="change" hx-encoding="multipart/form-data" hx-target="#upload-result" hx-swap="innerHTML">
+        <div id="upload-result" class="mt-2" aria-live="polite"></div>
+      </div>
+    </div>
+    <div>
+      <p class="label" id="preview-label">Preview</p>
+      <div id="preview" aria-labelledby="preview-label" class="prose prose-stone max-w-none rounded-md border border-stone-200 p-4 dark:prose-invert dark:border-stone-800">{{.Preview}}</div>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="/admin" class="btn">Cancel</a>
+  </div>
+</form>
+
+{{if .ID}}
+<form method="post" action="/admin/posts/{{.ID}}/delete" data-confirm="Delete this post permanently?" class="mt-8 border-t border-stone-200 pt-6 dark:border-stone-800">
+  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+  <button type="submit" class="btn btn-danger">Delete post</button>
+</form>
+{{end}}
+{{end}}
+{{end}}

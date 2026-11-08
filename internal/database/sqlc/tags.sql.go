@@ -23,6 +23,24 @@ func (q *Queries) AddPostTag(ctx context.Context, arg AddPostTagParams) error {
 	return err
 }
 
+const clearPostTags = `-- name: ClearPostTags :exec
+DELETE FROM post_tags WHERE post_id = ?
+`
+
+func (q *Queries) ClearPostTags(ctx context.Context, postID int64) error {
+	_, err := q.db.ExecContext(ctx, clearPostTags, postID)
+	return err
+}
+
+const deleteOrphanTags = `-- name: DeleteOrphanTags :exec
+DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM post_tags)
+`
+
+func (q *Queries) DeleteOrphanTags(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteOrphanTags)
+	return err
+}
+
 const getTagBySlug = `-- name: GetTagBySlug :one
 SELECT id, slug, name FROM tags WHERE slug = ?
 `

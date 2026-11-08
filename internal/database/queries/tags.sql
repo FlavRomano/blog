@@ -22,3 +22,9 @@ JOIN post_tags pt ON pt.tag_id = t.id
 JOIN posts p ON p.id = pt.post_id AND p.status = 'published'
 GROUP BY t.id
 ORDER BY t.name;
+
+-- name: ClearPostTags :exec
+DELETE FROM post_tags WHERE post_id = ?;
+
+-- name: DeleteOrphanTags :exec
+DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM post_tags);

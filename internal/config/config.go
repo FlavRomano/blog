@@ -21,6 +21,7 @@ type Config struct {
 	SiteDescription string
 	AuthorName      string
 	CFBeaconToken   string // Cloudflare Web Analytics token; empty disables the beacon
+	Timezone        string // IANA zone used to read/show admin publish times
 }
 
 func Load() (Config, error) {
@@ -38,6 +39,7 @@ func Load() (Config, error) {
 		SiteDescription: env("BLOG_SITE_DESCRIPTION", "Notes on software, systems and whatever I'm building."),
 		AuthorName:      env("BLOG_AUTHOR_NAME", "Flavio Romano"),
 		CFBeaconToken:   os.Getenv("BLOG_CF_BEACON_TOKEN"),
+		Timezone:        env("BLOG_TIMEZONE", "UTC"),
 	}
 	if c.DBPath == "" {
 		return c, fmt.Errorf("BLOG_DB_PATH must not be empty")
