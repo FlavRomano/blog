@@ -1,0 +1,35 @@
+#!/bin/sh
+# Installs the uploaded binary, restarts the service and rolls back if /healthz fails.
+# Runs as root via sudo from the deploy user; the only thing it reads is the upload.
+set -eu
+
+NEW=/home/deploy/incoming/blog
+BIN=/opt/blog/blog
+PREV=/opt/blog/blog.prev
+ADDR=$(. /etc/blog/blog.env && echo "${BLOG_ADDR:-127.0.0.1:8080}")
+
+[ -f "$NEW" ] || { echo "no upload at $NEW" >&2; exit 1; }
+file "$NEW" 2>/dev/null | grep -q 'ARM aarch64' || { echo "upload is not an arm64 binary" >&2; exit 1; }
+
+[ -f "$BIN" ] && cp -p "$BIN" "$PREV"
+install -o root -g root -m 0755 "$NEW" "$BIN.new"
+mv "$BIN.new" "$BIN"
+rm -f "$NEW"
+systemctl restart blog
+
+for _ in $(seq 1 20); do
+  if curl -fsS "http://$ADDR/healthz" >/dev/null 2>&1; then
+    echo "deployed ok"
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "health check failed" >&2
+journalctl -u blog -n 30 --no-pager >&2 || true
+if [ -f "$PREV" ]; then
+  echo "rolling back" >&2
+  cp -p "$PREV" "$BIN"
+  systemctl restart blog
+fi
+exit 1
